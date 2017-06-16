@@ -1,5 +1,5 @@
 # MediaHaven Update Service
-This service updates fragments in MediaHaven based on their fragment id. Updates are sequentially and they wait for the object to actually be updated before responding.
+This service updates fragments in MediaHaven based on their fragment id. Updates are sequentially and they wait for the object to actually be updated before responding. The service will check whether the fragment was updated by checking the `lastModifiedDate` field.
 
 ## Usage
 Run this project with the Mule Runtime and fill in the properties.
