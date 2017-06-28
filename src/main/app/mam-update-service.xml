@@ -25,16 +25,16 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
         <flow-ref name="publishResponse" doc:name="publishResponse"/>
         <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
         <choice-exception-strategy doc:name="Choice Exception Strategy">
-            <catch-exception-strategy when="#[exception.causedBy(org.mule.api.routing.filter.FilterUnacceptedException)]" doc:name="Catch FilterUnacceptedException">
+            <catch-exception-strategy when="#[exception.causedBy(org.mule.api.routing.filter.FilterUnacceptedException)]" doc:name="Catch FilterUnacceptedException Strategy">
                 <set-variable variableName="message" value="#[(flowVars.message == null || flowVars.message.isEmpty() ? &quot;&quot; : flowVars.message + &quot; - &quot;) +  (flowVars.correlation_id == null || flowVars.correlation_id.isEmpty() ? &quot;correlation_id was not filled in&quot; : &quot;&quot;)]" doc:name="Append 'correlation_id was not filled in' to message"/>
                 <set-variable variableName="message" value="#[(flowVars.message == null || flowVars.message.isEmpty() ? &quot;&quot; : flowVars.message + &quot; - &quot;) + (flowVars.fragment_id == null || flowVars.fragment_id.isEmpty() ? &quot;fragment_id was not filled in&quot; : &quot;&quot;)]" doc:name="Append 'fragment_id was not filled in' to message"/>
                 <flow-ref name="publishResponse" doc:name="publishResponse"/>
                 <logger level="ERROR" doc:name="The message was invalid" message="The message was invalid. #[flowVars.message]"/>
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
             </catch-exception-strategy>
-            <catch-exception-strategy when="#[exception.causedBy(org.mule.api.routing.RoutingException)]" doc:name="Catch Exception Strategy">
+            <catch-exception-strategy when="#[exception.causedBy(org.mule.api.routing.RoutingException)]" doc:name="Catch RoutingException Strategy">
                 <set-variable variableName="message" value="Failed to update fragment" doc:name="Set message"/>
-                <set-variable variableName="cause" value="#[org.apache.commons.lang3.exception.ExceptionUtils.getRootCause(exception).getMessage()]" doc:name="Set cause"/>
+                <set-variable variableName="cause" value="#[exception.toString()]" doc:name="Set cause"/>
                 <flow-ref name="publishResponse" doc:name="publishResponse"/>
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
             </catch-exception-strategy>
@@ -102,7 +102,7 @@ payload]]></dw:set-variable>
         </http:request>
         <set-variable variableName="updatedDateTime" value="#[org.joda.time.format.DateTimeFormat.forPattern('E, d MMM yyyy HH:mm:ss z').parseDateTime(message.inboundProperties.date)]" doc:name="Set updatedDateTime"/>
         <expression-component doc:name="Sleep for 2 seconds"><![CDATA[java.lang.Thread.sleep(2000);]]></expression-component>
-        <until-successful maxRetries="5" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
+        <until-successful maxRetries="10" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
             <flow-ref name="checkIfUpdatedSubFlow" doc:name="checkIfUpdatedSubFlow"/>
         </until-successful>
         <logger level="INFO" doc:name="Logger"/>
