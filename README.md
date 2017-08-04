@@ -10,7 +10,7 @@ On RabbitMQ, publish a message in the following format. You can use both cp_name
 {
     "correlation_id": "abc123",
     "fragment_id": "9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50",
-    "cp_name": "someorganisation"
+    "cp_name": "someorganisation",
     "data": "<MediaHAVEN_external_metadata><MDProperties><CP_id>OR-rf5kf25</CP_id></MDProperties></MediaHAVEN_external_metadata>"
 }
 ```
@@ -19,7 +19,7 @@ On RabbitMQ, publish a message in the following format. You can use both cp_name
  {
      "correlation_id": "abc123",
      "fragment_id": "9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50",
-     "cp_id": "OR-ABCDEFG"
+     "cp_id": "OR-ABCDEFG",
      "data": "<MediaHAVEN_external_metadata><MDProperties><CP_id>OR-ABCDEFG</CP_id></MDProperties></MediaHAVEN_external_metadata>"
  }
  ```
