@@ -35,7 +35,7 @@
         <!-- Reduce startup noise -->
         <AsyncLogger name="org.springframework.beans.factory" level="WARN"/>
         
-        <AsyncLogger name="org.mule.transport.amqp" level="DEBUG"/>
+        <AsyncLogger name="org.mule.transport.amqp" level="WARN"/>
         
 
         <!-- Mule classes -->
@@ -46,7 +46,7 @@
         <AsyncLogger name="org.jetel" level="WARN"/>
         <AsyncLogger name="Tracking" level="WARN"/>
         
-        <AsyncRoot level="DEBUG">
+        <AsyncRoot level="INFO">
             <AppenderRef ref="file" />
         </AsyncRoot>
     </Loggers>
