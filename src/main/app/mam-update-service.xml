@@ -61,7 +61,7 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
         <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
         <mulexml:dom-to-xml-transformer doc:name="DOM to XML"/>
         <dw:transform-message doc:name="Set javaData">
-            <dw:input-payload doc:sample="sample_data/empty.xml"/>
+            <dw:input-payload doc:sample="sample_data/empty.xml" mimeType="application/java"/>
             <dw:set-variable variableName="javaData"><![CDATA[%dw 1.0
 %output application/java
 ---
@@ -134,17 +134,6 @@ payload.lastModifiedDate]]></dw:set-payload>
         </choice>
     </sub-flow>
     <flow name="publishResponse" processingStrategy="synchronous">
-        <dw:transform-message doc:name="Make queue creation request">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-{
-	"auto_delete":false,
-	"durable":true,
-	"arguments":{}
-}]]></dw:set-payload>
-        </dw:transform-message>
-        <http:request config-ref="RabbitMQAPI" path="/queues/#[java.net.URLEncoder.encode('${rabbit.vhost}', &quot;UTF-8&quot;)]/${rabbit.responsequeue}" method="PUT" doc:name="Create queue"/>
         <dw:transform-message doc:name="Make response">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
@@ -160,7 +149,7 @@ payload.lastModifiedDate]]></dw:set-payload>
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
         <set-variable variableName="type" value="response" doc:name="Set type"/>
         <scatter-gather doc:name="Scatter-Gather">
-            <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response"/>
+            <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response" queueDurable="true"/>
             <flow-ref name="esPost" doc:name="esPost"/>
         </scatter-gather>
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload"/>
