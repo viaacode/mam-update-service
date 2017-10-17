@@ -152,7 +152,7 @@ payload.lastModifiedDate]]></dw:set-payload>
         <set-variable variableName="type" value="response" doc:name="Set type"/>
         <scatter-gather doc:name="Scatter-Gather">
             <amqp:outbound-endpoint queueName="#[flowVars.dest_queue == null ? '${rabbit.responsequeue}' : flowVars.dest_queue]" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response" queueDurable="true"/>
-            <until-successful maxRetries="10" millisBetweenRetries="2000" synchronous="true" doc:name="Until Successful">
+            <until-successful maxRetries="10" millisBetweenRetries="10000" synchronous="true" doc:name="Until Successful">
                 <flow-ref name="esPost" doc:name="esPost"/>
             </until-successful>
         </scatter-gather>
