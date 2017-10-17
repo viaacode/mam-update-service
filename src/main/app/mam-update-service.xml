@@ -20,7 +20,7 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
         	connector-ref="InboundAMQPConnector"
         	doc:name="AMQP-0-9" numberOfChannels="2"/>
         <flow-ref name="parseMessageSubFlow" doc:name="parseMessageSubFlow"/>
-<!--         <flow-ref name="updateCallFlow" doc:name="updateCallFlow"/> -->
+        <flow-ref name="updateCallFlow" doc:name="updateCallFlow"/>
         <set-variable variableName="outcome" value="success" doc:name="Set outcome"/>
         <flow-ref name="publishResponse" doc:name="publishResponse"/>
         <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
