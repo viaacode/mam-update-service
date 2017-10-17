@@ -25,7 +25,7 @@ On RabbitMQ, publish a message in the following format. You can use both cp_name
  }
  ```
 
-An optional destination queue can be provided using the `dest_queue` parameter like in [Example 2](example2).
+An optional destination queue can be provided using the `dest_queue` parameter like in Example 2.
 The service will respond on the response queue with a message that looks like the following:
 ### Response: success
 ```
