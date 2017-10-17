@@ -6,6 +6,7 @@ Run this project with the Mule Runtime and fill in the properties.
 
 On RabbitMQ, publish a message in the following format. You can use both cp_name or cp_id:
 ### Request
+#### Example 1
 ```
 {
     "correlation_id": "abc123",
@@ -14,7 +15,7 @@ On RabbitMQ, publish a message in the following format. You can use both cp_name
     "data": "<MediaHAVEN_external_metadata><MDProperties><CP_id>OR-rf5kf25</CP_id></MDProperties></MediaHAVEN_external_metadata>"
 }
 ```
-
+#### Example 2<a name="example2" />
 ```
  {
      "correlation_id": "abc123",
@@ -24,6 +25,7 @@ On RabbitMQ, publish a message in the following format. You can use both cp_name
  }
  ```
 
+An optional destination queue can be provided using the `dest_queue` parameter like in [Example 2](example2).
 The service will respond on the response queue with a message that looks like the following:
 ### Response: success
 ```
