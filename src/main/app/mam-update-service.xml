@@ -18,7 +18,7 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
         	queueDurable="true"
         	responseTimeout="10000"
         	connector-ref="InboundAMQPConnector"
-        	doc:name="AMQP-0-9" numberOfChannels="2"/>
+        	doc:name="AMQP-0-9" numberOfChannels="2" mimeType="application/json"/>
         <flow-ref name="parseMessageSubFlow" doc:name="parseMessageSubFlow"/>
         <flow-ref name="updateCallFlow" doc:name="updateCallFlow"/>
         <set-variable variableName="outcome" value="success" doc:name="Set outcome"/>
@@ -47,7 +47,13 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
         </choice-exception-strategy>
     </flow>
     <sub-flow name="parseMessageSubFlow">
-        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+%input payload application/json
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
         <set-variable variableName="originalMessage" value="#[payload]" doc:name="Set originalMessage"/>
         <set-variable variableName="type" value="request" doc:name="Set type"/>
         <flow-ref name="esPost" doc:name="esPost"/>
@@ -76,8 +82,12 @@ payload]]></dw:set-variable>
                         <http:uri-param paramName="ldap_id" value="#[flowVars.cp_id]"/>
                     </http:request-builder>
                 </http:request>
-                <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
-                <set-variable variableName="cp_name" value="#[payload.data.cp_name_mam]" doc:name="Set cp_name"/>
+                <dw:transform-message doc:name="Transform Message">
+                    <dw:set-variable variableName="cp_name"><![CDATA[%dw 1.0
+%output application/java
+---
+payload.data.cp_name_mam]]></dw:set-variable>
+                </dw:transform-message>
             </when>
             <otherwise>
                 <expression-component doc:name="Do nothing"><![CDATA[// Do nothing]]></expression-component>
@@ -159,7 +169,6 @@ payload.lastModifiedDate]]></dw:set-payload>
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload"/>
     </flow>
     <sub-flow name="esPost">
-        <json:object-to-json-transformer doc:name="Object to JSON"/>
         <dw:transform-message doc:name="Transform Message">
             <dw:input-payload doc:sample="sample_data/json.json"/>
             <dw:set-payload><![CDATA[%dw 1.0
