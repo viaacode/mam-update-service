@@ -34,6 +34,8 @@
                         </inclusion>
                     
                     
+                    
+                    
                     </inclusions>
                 </configuration>
 			</plugin>
@@ -157,6 +159,12 @@
 			<version>${mule.version}</version>
 			<scope>provided</scope>
 		</dependency>
+	    <dependency>
+            <groupId>com.mulesoft.weave</groupId>
+            <artifactId>mule-plugin-weave</artifactId>
+            <version>${mule.version}</version>
+            <scope>provided</scope>
+        </dependency>
 		<!-- for testing -->
 		<dependency>
 			<groupId>org.mule.tests</groupId>
@@ -186,20 +194,6 @@
             <artifactId>munit-runner</artifactId>
             <version>${munit.version}</version>
             <scope>test</scope>
-        </dependency>
-    
-    
-    <dependency>
-            <groupId>com.mulesoft.weave</groupId>
-            <artifactId>mule-plugin-weave</artifactId>
-            <version>${mule.version}</version>
-            <scope>provided</scope>
-        </dependency>
-    <dependency>
-            <groupId>org.mule.modules</groupId>
-            <artifactId>mule-module-spring-config</artifactId>
-            <version>${mule.version}</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 

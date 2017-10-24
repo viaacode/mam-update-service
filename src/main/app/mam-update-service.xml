@@ -166,7 +166,6 @@ payload.lastModifiedDate]]></dw:set-payload>
                 <flow-ref name="esPost" doc:name="esPost"/>
             </until-successful>
         </scatter-gather>
-        <set-payload value="#[&quot;&quot;]" doc:name="Set Payload"/>
     </flow>
     <sub-flow name="esPost">
         <dw:transform-message doc:name="Transform Message">

@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration"/>
+    <spring:beans>
+        <spring:import resource="classpath:mam-update-service.xml"/>
+        <spring:import resource="classpath:global.xml"/>
+    </spring:beans>
+    <munit:test name="mhUpdateServiceListenerFlowTest" description="Test">
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock parseMessageSubFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('parseMessageSubFlow')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock updateCallFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('updateCallFlow')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="mule:flow" doc:name="Mock publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="publishResponse"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="amqp:acknowledge-message" doc:name="Mock ack-message">
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <flow-ref name="mhUpdateServiceListenerFlow" doc:name="Flow-ref to mhUpdateServiceListenerFlow"/>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify Call to parseMessageSubFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('parseMessageSubFlow')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify Call to updateCallFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('updateCallFlow')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="mule:flow" times="1" doc:name="Verify Call to publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#['publishResponse']"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="amqp:acknowledge-message" times="1" doc:name="Verify Call"/>
+    </munit:test>
+    <munit:test name="mhUpdateServiceListenerFlowTest-Error-Parsing" description="Test">
+        <mock:throw-an exception-ref="#[new java.lang.Exception()]" whenCalling="mule:sub-flow" doc:name="Throw an Exception on parseMessageSubFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('parseMessageSubFlow')]"/>
+            </mock:with-attributes>
+        </mock:throw-an>
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock updateCallFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('updateCallFlow')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="mule:flow" doc:name="Mock publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="publishResponse"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="amqp:acknowledge-message" doc:name="Mock ack-message">
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <flow-ref name="mhUpdateServiceListenerFlow" doc:name="Flow-ref to mhUpdateServiceListenerFlow"/>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify Call to parseMessageSubFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('parseMessageSubFlow')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="0" doc:name="Verify No Call to updateCallFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('updateCallFlow')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="mule:flow" times="1" doc:name="Verify Call to publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#['publishResponse']"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="amqp:acknowledge-message" times="1" doc:name="Verify Call"/>
+    </munit:test>
+    <munit:test name="mam-update-service-test-CP-ID-correct" description="Test the LDAP2MAM call is executed correctly and the message is parsed correctly">
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock esPost">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="http:request" doc:name="Mock LDAP2MAM">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="LDAP2MAM"/>
+            </mock:with-attributes>
+            <mock:then-return payload="{&quot;status&quot;:&quot;success&quot;,&quot;description&quot;:&quot;SuccessfullyfoundorganizationforLDAPid&quot;,&quot;data&quot;:{&quot;or_id&quot;:&quot;OR-rf5kf25&quot;,&quot;cp_name_mam&quot;:&quot;vrt&quot;,&quot;cp_name&quot;:&quot;VRT&quot;,&quot;category&quot;:&quot;ContentPartner&quot;,&quot;sector&quot;:&quot;PubliekeOmroep&quot;,&quot;cp_name_catpro&quot;:&quot;VRT&quot;,&quot;contact_information&quot;:{&quot;phone&quot;:&quot;+3227413111&quot;,&quot;website&quot;:&quot;www.vrt.be&quot;,&quot;email&quot;:&quot;&quot;,&quot;logoUrl&quot;:&quot;https://assets.viaa.be/images/OR-rf5kf25&quot;}}}" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="200"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <dw:transform-message doc:name="Set message request">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+     "correlation_id": "abc123",
+     "fragment_id": "9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50",
+     "cp_id": "OR-rf5kf25",
+     "data": "<MediaHAVEN_external_metadata><MDProperties><CP_id>OR-ABCDEFG</CP_id></MDProperties></MediaHAVEN_external_metadata>",
+     "dest_queue": "my-response-queue"
+ }]]></dw:set-payload>
+        </dw:transform-message>
+        <flow-ref name="parseMessageSubFlow" doc:name="Flow-ref to parseMessageSubFlow"/>
+        <mock:verify-call messageProcessor="http:request" times="1" doc:name="Verify LDAP2MAM call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="LDAP2MAM"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <munit:assert-on-equals message="correlation_id was incorrect" expectedValue="abc123" actualValue="#[flowVars.correlation_id]" doc:name="Assert correlation_id"/>
+        <munit:assert-on-equals message="fragment_id was incorrect" expectedValue="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" actualValue="#[flowVars.fragment_id]" doc:name="Assert fragment_id"/>
+        <munit:assert-on-equals message="cp_id was incorrect" expectedValue="OR-rf5kf25" actualValue="#[flowVars.cp_id]" doc:name="Assert cp_id"/>
+        <munit:assert-on-equals message="cp_name was incorrect" expectedValue="vrt" actualValue="#[flowVars.cp_name]" doc:name="Assert cp_name"/>
+        <munit:assert-false message="Data is empty!" condition="#[flowVars.data == null &amp;&amp; flowVars.data.isEmpty()]" doc:name="Assert Data is not empty"/>
+    </munit:test>
+    <munit:test name="mam-update-service-test-updateCallFlow" description="Test whether the fragment update is executed correctly">
+        <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="Date" value="Wed, 18 Oct 2017 07:02:37 GMT" mimeType="text/plain"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock checkIfUpdatedSubFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('checkIfUpdatedSubFlow')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
+        <set-variable variableName="cp_name" value="vrt" doc:name="Set cp_name"/>
+        <set-variable variableName="data" value="&lt;MediaHAVEN_external_metadata&gt;&lt;MDProperties&gt;&lt;CP_id&gt;OR-ABCDEFG&lt;/CP_id&gt;&lt;/MDProperties&gt;&lt;/MediaHAVEN_external_metadata&gt;" doc:name="Set data"/>
+        <flow-ref name="updateCallFlow" doc:name="Flow-ref to updateCallFlow"/>
+        <mock:verify-call messageProcessor="http:request" doc:name="Verify MediahavenAPI call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify checkIfUpdatedSubFlow call">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('checkIfUpdatedSubFlow')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+    </munit:test>
+    <munit:test name="mam-update-service-test-updateCallFlow-Error-On-Update" description="Test whether the fragment update is executed correctly">
+        <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="Date" value="Wed, 18 Oct 2017 07:02:37 GMT" mimeType="text/plain"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock checkIfUpdatedSubFlow">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('checkIfUpdatedSubFlow')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
+        <set-variable variableName="cp_name" value="vrt" doc:name="Set cp_name"/>
+        <set-variable variableName="data" value="&lt;MediaHAVEN_external_metadata&gt;&lt;MDProperties&gt;&lt;CP_id&gt;OR-ABCDEFG&lt;/CP_id&gt;&lt;/MDProperties&gt;&lt;/MediaHAVEN_external_metadata&gt;" doc:name="Set data"/>
+        <flow-ref name="updateCallFlow" doc:name="Flow-ref to updateCallFlow"/>
+        <mock:verify-call messageProcessor="http:request" doc:name="Verify MediahavenAPI call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify checkIfUpdatedSubFlow call">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('checkIfUpdatedSubFlow')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+    </munit:test>
+    <munit:test name="checkIfUpdatedSubFlowTest" description="Test">
+        <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+            <mock:then-return payload="{&quot;lastModifiedDate&quot;: &quot;#[org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd'T'HH:mm:ss'Z'&quot;).print(new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC).plusSeconds(2))]&quot;}" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="#[200]"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <set-variable variableName="updateRequestedTime" value="#[new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC)]" doc:name="Set updateRequestedTime"/>
+        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
+        <flow-ref name="checkIfUpdatedSubFlow" doc:name="Flow-ref to checkIfUpdatedSubFlow"/>
+        <munit:assert-on-equals message="Outcome was not correct" expectedValue="OK" actualValue="#[flowVars.outcome]" doc:name="Assert Equals"/>
+    </munit:test>
+    <munit:test name="checkIfUpdatedSubFlowTest-Not-Updated" description="Test">
+        <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+            <mock:then-return payload="{&quot;lastModifiedDate&quot;: &quot;#[org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd'T'HH:mm:ss'Z'&quot;).print(new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC).minusSeconds(2))]&quot;}" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="#[200]"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <set-variable variableName="updateRequestedTime" value="#[new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC)]" doc:name="Set updateRequestedTime"/>
+        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
+        <flow-ref name="checkIfUpdatedSubFlow" doc:name="Flow-ref to checkIfUpdatedSubFlow"/>
+        <munit:assert-on-equals message="Outcome was not correct" expectedValue="RETRY" actualValue="#[flowVars.outcome]" doc:name="Assert Equals"/>
+    </munit:test>
+    <munit:test name="mam-update-service-test-suite-publishResponseTest" description="Test">
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock esPost">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="amqp:outbound-endpoint" doc:name="Mock AMQP">
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <set-variable variableName="correlation_id" value="abc123" doc:name="Set correlation_id"/>
+        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
+        <set-variable doc:name="Set outcome" value="success" variableName="outcome"/>
+        <flow-ref name="publishResponse" doc:name="Flow-ref to publishResponse"/>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify esPost">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="amqp:outbound-endpoint" times="1" doc:name="Verify AMQP post"/>
+    </munit:test>
+</mule>
