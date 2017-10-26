@@ -149,6 +149,7 @@ payload.lastModifiedDate]]></dw:set-payload>
 }]]></dw:set-payload>
         </dw:transform-message>
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <set-variable variableName="esMessage" value="#[payload]" doc:name="Set esMessage"/>
         <set-variable variableName="type" value="response" doc:name="Set type"/>
         <scatter-gather doc:name="Scatter-Gather">
             <amqp:outbound-endpoint queueName="#[flowVars.dest_queue == null ? '${rabbit.responsequeue}' : flowVars.dest_queue]" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response" queueDurable="true"/>
@@ -157,6 +158,11 @@ payload.lastModifiedDate]]></dw:set-payload>
             </until-successful>
         </scatter-gather>
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload"/>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <logger message="#[message.payloadAs(java.lang.String)]" level="ERROR" doc:name="Logger"/>
+            <set-payload value="#[flowVars.esMessage]" doc:name="Set Payload"/>
+            <amqp:outbound-endpoint queueName="mam-update-service-espost-errors" queueDurable="true" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="AMQP-0-9"/>
+        </catch-exception-strategy>
     </flow>
     <sub-flow name="esPost">
         <json:object-to-json-transformer doc:name="Object to JSON"/>
