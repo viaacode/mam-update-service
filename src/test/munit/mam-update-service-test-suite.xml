@@ -289,10 +289,10 @@ payload]]></dw:set-payload>
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
 ---
-payload]]></dw:set-payload>
+flowVars.response]]></dw:set-payload>
         </dw:transform-message>
+        <munit:assert-on-equals message="outcome was incorrect" expectedValue="failed" actualValue="#[payload['outcome']]" doc:name="Assert outcome"/>
         <munit:assert-on-equals message="correlation_id was not present in response" expectedValue="abc123" actualValue="#[payload.correlation_id]" doc:name="Assert correlation_id"/>
         <munit:assert-on-equals message="fragment_id was not present in response" expectedValue="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" actualValue="#[payload.fragment_id]" doc:name="Assert fragment_id"/>
-        <munit:assert-on-equals message="outcome was incorrect" expectedValue="failed" actualValue="#[payload.outcome]" doc:name="Assert outcome"/>
     </munit:test>
 </mule>

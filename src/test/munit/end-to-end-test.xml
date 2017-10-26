@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:mock="http://www.mulesoft.org/schema/mule/mock"
+<mule xmlns:context="http://www.springframework.org/schema/context" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:mock="http://www.mulesoft.org/schema/mule/mock"
 	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd
 http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd">
     <munit:config name="munit" doc:name="MUnit configuration"/>
     <spring:beans>
         <spring:import resource="classpath:mam-update-service.xml"/>
         <spring:import resource="classpath:global.xml"/>
     </spring:beans>
+    <context:property-placeholder location="test.properties"/>
     <munit:test name="end-to-end-test-mhUpdateServiceListenerFlowTest" description="Test a successful update">
     	<mock:when messageProcessor="mule:sub-flow" doc:name="Mock esPost">
             <mock:with-attributes>
@@ -33,7 +35,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                 <mock:with-attribute name="method" whereValue="POST"/>
                 <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
             </mock:with-attributes>
-            <mock:then-return payload="#[]" mimeType="application/json">
+            <mock:then-return payload="#[&quot;&quot;]" mimeType="application/json">
                 <mock:inbound-properties>
                     <mock:inbound-property key="Date" value="#[org.joda.time.format.DateTimeFormat.forPattern(&quot;E, d MMM yyyy HH:mm:ss 'GMT'&quot;).print(new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC))]" mimeType="text/plain"/>
                 </mock:inbound-properties>
@@ -51,6 +53,9 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
             </mock:then-return>
         </mock:when>
         <mock:when messageProcessor="amqp:outbound-endpoint" doc:name="Mock AMQP">
+            <mock:with-attributes>
+                <mock:with-attribute name="connector-ref" whereValue="OutboundAMQPConnector"/>
+            </mock:with-attributes>
             <mock:then-return payload="#[]"/>
         </mock:when>
         <mock:when messageProcessor="amqp:acknowledge-message" doc:name="Mock ack-message">
@@ -94,7 +99,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
             <mock:with-attributes>
                 <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
             </mock:with-attributes>
-            <mock:then-return payload="#[]"/>
+            <mock:then-return payload="#[&quot;&quot;]"/>
         </mock:when>
     	<mock:when messageProcessor="http:request" doc:name="Mock LDAP2MAM">
             <mock:with-attributes>
@@ -124,6 +129,9 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
             </mock:then-return>
         </mock:when>
         <mock:when messageProcessor="amqp:outbound-endpoint" doc:name="Mock AMQP">
+            <mock:with-attributes>
+                <mock:with-attribute name="connector-ref" whereValue="OutboundAMQPConnector"/>
+            </mock:with-attributes>
             <mock:then-return payload="#[&quot;&quot;]"/>
         </mock:when>
         <mock:when messageProcessor="amqp:acknowledge-message" doc:name="Mock ack-message">
