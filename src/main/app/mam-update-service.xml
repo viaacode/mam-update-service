@@ -22,12 +22,14 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
         <flow-ref name="parseMessageSubFlow" doc:name="parseMessageSubFlow"/>
         <flow-ref name="updateCallFlow" doc:name="updateCallFlow"/>
         <set-variable variableName="outcome" value="success" doc:name="Set outcome"/>
+        <flow-ref name="createResponse" doc:name="createResponse"/>
         <flow-ref name="publishResponse" doc:name="publishResponse"/>
         <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
         <choice-exception-strategy doc:name="Choice Exception Strategy">
             <catch-exception-strategy when="#[exception.causedBy(org.mule.api.routing.filter.FilterUnacceptedException)]" doc:name="Catch FilterUnacceptedException Strategy">
                 <set-variable variableName="message" value="#[(flowVars.message == null || flowVars.message.isEmpty() ? &quot;&quot; : flowVars.message + &quot; - &quot;) +  (flowVars.correlation_id == null || flowVars.correlation_id.isEmpty() ? &quot;correlation_id was not filled in&quot; : &quot;&quot;)]" doc:name="Append 'correlation_id was not filled in' to message"/>
                 <set-variable variableName="message" value="#[(flowVars.message == null || flowVars.message.isEmpty() ? &quot;&quot; : flowVars.message + &quot; - &quot;) + (flowVars.fragment_id == null || flowVars.fragment_id.isEmpty() ? &quot;fragment_id was not filled in&quot; : &quot;&quot;)]" doc:name="Append 'fragment_id was not filled in' to message"/>
+                <flow-ref name="createResponse" doc:name="createResponse"/>
                 <flow-ref name="publishResponse" doc:name="publishResponse"/>
                 <logger level="ERROR" doc:name="The message was invalid" message="The message was invalid. #[flowVars.message]"/>
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
@@ -35,12 +37,14 @@ http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/
             <catch-exception-strategy when="#[exception.causedBy(org.mule.api.routing.RoutingException)]" doc:name="Catch RoutingException Strategy">
                 <set-variable variableName="message" value="Failed to update fragment" doc:name="Set message"/>
                 <set-variable variableName="cause" value="#[exception.toString()]" doc:name="Set cause"/>
+                <flow-ref name="createResponse" doc:name="createResponse"/>
                 <flow-ref name="publishResponse" doc:name="publishResponse"/>
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
             </catch-exception-strategy>
             <catch-exception-strategy doc:name="Catch Exception Strategy">
             	<set-variable variableName="message" value="Failed to process message" doc:name="Set message"/>
                 <set-variable variableName="cause" value="#[exception.toString() + &quot;\n\n&quot; + message.payloadAs(java.lang.String)]" doc:name="Set cause"/>
+                <flow-ref name="createResponse" doc:name="createResponse"/>
                 <flow-ref name="publishResponse" doc:name="publishResponse"/>
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
             </catch-exception-strategy>
@@ -137,7 +141,7 @@ payload.lastModifiedDate]]></dw:set-payload>
         </dw:transform-message>
         <logger message="Date updated: #[payload]" level="INFO" doc:name="Logger"/>
         <choice doc:name="Was the fragment updated at the time Mediahaven responded?">
-            <when expression="#[new org.joda.time.LocalDateTime(org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;).parseDateTime(payload.replaceAll(&quot;Z&quot;, &quot;&quot;).replaceAll(&quot;T&quot;, &quot; &quot;)).getMillis()).toDateTime(org.joda.time.DateTimeZone.UTC).isAfter(flowVars.updateRequestedTime)]">
+            <when expression="#[new org.joda.time.LocalDateTime(org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;).parseDateTime(payload.replaceAll(&quot;Z&quot;, &quot;&quot;).replaceAll(&quot;T&quot;, &quot; &quot;)).getMillis()).toDateTime(org.joda.time.DateTimeZone.UTC).isAfter(flowVars.updatedDateTime)]">
                 <set-variable variableName="outcome" value="OK" doc:name="Set outcome"/>
             </when>
             <otherwise>
@@ -145,9 +149,9 @@ payload.lastModifiedDate]]></dw:set-payload>
             </otherwise>
         </choice>
     </sub-flow>
-    <flow name="publishResponse" processingStrategy="synchronous">
+    <sub-flow name="createResponse">
         <dw:transform-message doc:name="Make response">
-            <dw:set-payload><![CDATA[%dw 1.0
+            <dw:set-variable variableName="response"><![CDATA[%dw 1.0
 %output application/json
 ---
 {
@@ -156,17 +160,20 @@ payload.lastModifiedDate]]></dw:set-payload>
 	outcome: flowVars.outcome when flowVars.outcome? otherwise 'failed',
 	message: flowVars.message when flowVars.message? otherwise '',
 	cause: flowVars.cause when flowVars.cause? otherwise ''
-}]]></dw:set-payload>
+}]]></dw:set-variable>
         </dw:transform-message>
-        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+    </sub-flow>
+    <sub-flow name="publishResponse">
         <set-variable variableName="type" value="response" doc:name="Set type"/>
+        <set-payload value="#[flowVars.response]" doc:name="Set Payload"/>
         <scatter-gather doc:name="Scatter-Gather">
             <amqp:outbound-endpoint queueName="#[flowVars.dest_queue == null ? '${rabbit.responsequeue}' : flowVars.dest_queue]" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response" queueDurable="true"/>
             <until-successful maxRetries="10" millisBetweenRetries="10000" synchronous="true" doc:name="Until Successful">
                 <flow-ref name="esPost" doc:name="esPost"/>
             </until-successful>
         </scatter-gather>
-    </flow>
+        <set-payload value="#[&quot;&quot;]" doc:name="Set Payload"/>
+    </sub-flow>
     <sub-flow name="esPost">
         <dw:transform-message doc:name="Transform Message">
             <dw:input-payload doc:sample="sample_data/json.json"/>

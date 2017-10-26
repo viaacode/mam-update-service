@@ -10,7 +10,7 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
         <spring:import resource="classpath:mam-update-service.xml"/>
         <spring:import resource="classpath:global.xml"/>
     </spring:beans>
-    <munit:test name="mhUpdateServiceListenerFlowTest" description="Test">
+    <munit:test name="mhUpdateServiceListenerFlowTest" description="Test if all flows are called in happy path">
         <mock:when messageProcessor="mule:sub-flow" doc:name="Mock parseMessageSubFlow">
             <mock:with-attributes>
                 <mock:with-attribute name="name" whereValue="#[matchContains('parseMessageSubFlow')]"/>
@@ -23,9 +23,15 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
             </mock:with-attributes>
             <mock:then-return payload="#[]"/>
         </mock:when>
-        <mock:when messageProcessor="mule:flow" doc:name="Mock publishResponse">
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock createResponse">
             <mock:with-attributes>
-                <mock:with-attribute name="name" whereValue="publishResponse"/>
+                <mock:with-attribute name="name" whereValue="#[matchContains('createResponse')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('publishResponse')]"/>
             </mock:with-attributes>
             <mock:then-return payload="#[]"/>
         </mock:when>
@@ -43,14 +49,19 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
                 <mock:with-attribute name="name" whereValue="#[matchContains('updateCallFlow')]"/>
             </mock:with-attributes>
         </mock:verify-call>
-        <mock:verify-call messageProcessor="mule:flow" times="1" doc:name="Verify Call to publishResponse">
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify Call to createResponse">
             <mock:with-attributes>
-                <mock:with-attribute name="name" whereValue="#['publishResponse']"/>
+                <mock:with-attribute name="name" whereValue="#[matchContains('createResponse')]"/>
             </mock:with-attributes>
         </mock:verify-call>
-        <mock:verify-call messageProcessor="amqp:acknowledge-message" times="1" doc:name="Verify Call"/>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify Call to publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('publishResponse')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="amqp:acknowledge-message" times="1" doc:name="Verify AMQP ack"/>
     </munit:test>
-    <munit:test name="mhUpdateServiceListenerFlowTest-Error-Parsing" description="Test">
+    <munit:test name="mhUpdateServiceListenerFlowTest-Error-Parsing" description="Test the calls being done when there was an error parsing the message">
         <mock:throw-an exception-ref="#[new java.lang.Exception()]" whenCalling="mule:sub-flow" doc:name="Throw an Exception on parseMessageSubFlow">
             <mock:with-attributes>
                 <mock:with-attribute name="name" whereValue="#[matchContains('parseMessageSubFlow')]"/>
@@ -62,9 +73,15 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
             </mock:with-attributes>
             <mock:then-return payload="#[]"/>
         </mock:when>
-        <mock:when messageProcessor="mule:flow" doc:name="Mock publishResponse">
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock createResponse">
             <mock:with-attributes>
-                <mock:with-attribute name="name" whereValue="publishResponse"/>
+                <mock:with-attribute name="name" whereValue="#[matchContains('createResponse')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="mule:sub-flow" doc:name="Mock publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('publishResponse')]"/>
             </mock:with-attributes>
             <mock:then-return payload="#[]"/>
         </mock:when>
@@ -82,14 +99,19 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
                 <mock:with-attribute name="name" whereValue="#[matchContains('updateCallFlow')]"/>
             </mock:with-attributes>
         </mock:verify-call>
-        <mock:verify-call messageProcessor="mule:flow" times="1" doc:name="Verify Call to publishResponse">
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify Call to createResponse">
             <mock:with-attributes>
-                <mock:with-attribute name="name" whereValue="#['publishResponse']"/>
+                <mock:with-attribute name="name" whereValue="#[matchContains('createResponse')]"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify Call to publishResponse">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('publishResponse')]"/>
             </mock:with-attributes>
         </mock:verify-call>
         <mock:verify-call messageProcessor="amqp:acknowledge-message" times="1" doc:name="Verify Call"/>
     </munit:test>
-    <munit:test name="mam-update-service-test-CP-ID-correct" description="Test the LDAP2MAM call is executed correctly and the message is parsed correctly">
+    <munit:test name="CP-ID-correct" description="Test the LDAP2MAM call is executed correctly and the message is parsed correctly">
         <mock:when messageProcessor="mule:sub-flow" doc:name="Mock esPost">
             <mock:with-attributes>
                 <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
@@ -130,7 +152,7 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
         <munit:assert-on-equals message="cp_name was incorrect" expectedValue="vrt" actualValue="#[flowVars.cp_name]" doc:name="Assert cp_name"/>
         <munit:assert-false message="Data is empty!" condition="#[flowVars.data == null &amp;&amp; flowVars.data.isEmpty()]" doc:name="Assert Data is not empty"/>
     </munit:test>
-    <munit:test name="mam-update-service-test-updateCallFlow" description="Test whether the fragment update is executed correctly">
+    <munit:test name="updateCallFlowTest" description="Test whether the fragment update is executed correctly">
         <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
             <mock:with-attributes>
                 <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
@@ -162,7 +184,7 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
             </mock:with-attributes>
         </mock:verify-call>
     </munit:test>
-    <munit:test name="mam-update-service-test-updateCallFlow-Error-On-Update" description="Test whether the fragment update is executed correctly">
+    <munit:test name="updateCallFlowTest-Error-On-Update" description="Test whether the fragment update is executed correctly">
         <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
             <mock:with-attributes>
                 <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
@@ -194,7 +216,7 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
             </mock:with-attributes>
         </mock:verify-call>
     </munit:test>
-    <munit:test name="checkIfUpdatedSubFlowTest" description="Test">
+    <munit:test name="checkIfUpdatedSubFlowTest" description="Test if the outcome is set when the update was a success">
         <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
             <mock:with-attributes>
                 <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
@@ -210,7 +232,7 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
         <flow-ref name="checkIfUpdatedSubFlow" doc:name="Flow-ref to checkIfUpdatedSubFlow"/>
         <munit:assert-on-equals message="Outcome was not correct" expectedValue="OK" actualValue="#[flowVars.outcome]" doc:name="Assert Equals"/>
     </munit:test>
-    <munit:test name="checkIfUpdatedSubFlowTest-Not-Updated" description="Test">
+    <munit:test name="checkIfUpdatedSubFlowTest-Not-Updated" description="Test if outcome was set to retry when the update failed">
         <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI call">
             <mock:with-attributes>
                 <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
@@ -226,7 +248,7 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
         <flow-ref name="checkIfUpdatedSubFlow" doc:name="Flow-ref to checkIfUpdatedSubFlow"/>
         <munit:assert-on-equals message="Outcome was not correct" expectedValue="RETRY" actualValue="#[flowVars.outcome]" doc:name="Assert Equals"/>
     </munit:test>
-    <munit:test name="mam-update-service-test-suite-publishResponseTest" description="Test">
+    <munit:test name="publishResponseTest" description="Test if publishing to ES and AMQP is done">
         <mock:when messageProcessor="mule:sub-flow" doc:name="Mock esPost">
             <mock:with-attributes>
                 <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
@@ -236,9 +258,6 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
         <mock:when messageProcessor="amqp:outbound-endpoint" doc:name="Mock AMQP">
             <mock:then-return payload="#[]"/>
         </mock:when>
-        <set-variable variableName="correlation_id" value="abc123" doc:name="Set correlation_id"/>
-        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
-        <set-variable doc:name="Set outcome" value="success" variableName="outcome"/>
         <flow-ref name="publishResponse" doc:name="Flow-ref to publishResponse"/>
         <mock:verify-call messageProcessor="mule:sub-flow" times="1" doc:name="Verify esPost">
             <mock:with-attributes>
@@ -246,5 +265,34 @@ http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/moc
             </mock:with-attributes>
         </mock:verify-call>
         <mock:verify-call messageProcessor="amqp:outbound-endpoint" times="1" doc:name="Verify AMQP post"/>
+    </munit:test>
+    <munit:test name="createResponseTest" description="Test if a success response looks OK">
+        <set-variable variableName="correlation_id" value="abc123" doc:name="Set correlation_id"/>
+        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
+        <set-variable variableName="outcome" value="success" doc:name="Set outcome"/>
+        <flow-ref name="createResponse" doc:name="Flow-ref to createResponse"/>
+        <dw:transform-message doc:name="Transform to java">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+        <munit:assert-on-equals message="correlation_id was not present in response" expectedValue="abc123" actualValue="#[payload.correlation_id]" doc:name="Assert correlation_id"/>
+        <munit:assert-on-equals message="fragment_id was not present in response" expectedValue="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" actualValue="#[payload.fragment_id]" doc:name="Assert fragment_id"/>
+        <munit:assert-on-equals message="outcome was incorrect" expectedValue="success" actualValue="#[payload.outcome]" doc:name="Assert outcome"/>
+    </munit:test>
+    <munit:test name="createResponseTest-Fail" description="Test if a failed response looks OK">
+        <set-variable variableName="correlation_id" value="abc123" doc:name="Set correlation_id"/>
+        <set-variable variableName="fragment_id" value="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" doc:name="Set fragment_id"/>
+        <flow-ref name="createResponse" doc:name="Flow-ref to createResponse"/>
+        <dw:transform-message doc:name="Transform to java">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+        <munit:assert-on-equals message="correlation_id was not present in response" expectedValue="abc123" actualValue="#[payload.correlation_id]" doc:name="Assert correlation_id"/>
+        <munit:assert-on-equals message="fragment_id was not present in response" expectedValue="9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50" actualValue="#[payload.fragment_id]" doc:name="Assert fragment_id"/>
+        <munit:assert-on-equals message="outcome was incorrect" expectedValue="failed" actualValue="#[payload.outcome]" doc:name="Assert outcome"/>
     </munit:test>
 </mule>

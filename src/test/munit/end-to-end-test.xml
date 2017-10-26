@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:mock="http://www.mulesoft.org/schema/mule/mock"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd
+http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration"/>
+    <spring:beans>
+        <spring:import resource="classpath:mam-update-service.xml"/>
+        <spring:import resource="classpath:global.xml"/>
+    </spring:beans>
+    <munit:test name="end-to-end-test-mhUpdateServiceListenerFlowTest" description="Test a successful update">
+    	<mock:when messageProcessor="mule:sub-flow" doc:name="Mock esPost">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+    	<mock:when messageProcessor="http:request" doc:name="Mock LDAP2MAM">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="LDAP2MAM"/>
+            </mock:with-attributes>
+            <mock:then-return payload="{&quot;status&quot;:&quot;success&quot;,&quot;description&quot;:&quot;SuccessfullyfoundorganizationforLDAPid&quot;,&quot;data&quot;:{&quot;or_id&quot;:&quot;OR-rf5kf25&quot;,&quot;cp_name_mam&quot;:&quot;vrt&quot;,&quot;cp_name&quot;:&quot;VRT&quot;,&quot;category&quot;:&quot;ContentPartner&quot;,&quot;sector&quot;:&quot;PubliekeOmroep&quot;,&quot;cp_name_catpro&quot;:&quot;VRT&quot;,&quot;contact_information&quot;:{&quot;phone&quot;:&quot;+3227413111&quot;,&quot;website&quot;:&quot;www.vrt.be&quot;,&quot;email&quot;:&quot;&quot;,&quot;logoUrl&quot;:&quot;https://assets.viaa.be/images/OR-rf5kf25&quot;}}}" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="200"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI update call">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="POST"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="Date" value="#[org.joda.time.format.DateTimeFormat.forPattern(&quot;E, d MMM yyyy HH:mm:ss 'GMT'&quot;).print(new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC))]" mimeType="text/plain"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI get call">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="GET"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+            <mock:then-return payload="{&quot;lastModifiedDate&quot;: &quot;#[org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd'T'HH:mm:ss'Z'&quot;).print(new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC).plusSeconds(2))]&quot;}" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="#[200]"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <mock:when messageProcessor="amqp:outbound-endpoint" doc:name="Mock AMQP">
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <mock:when messageProcessor="amqp:acknowledge-message" doc:name="Mock ack-message">
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+     "correlation_id": "abc123",
+     "fragment_id": "9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50",
+     "cp_id": "OR-rf5kf25",
+     "data": "<MediaHAVEN_external_metadata><MDProperties><CP_id>OR-ABCDEFG</CP_id></MDProperties></MediaHAVEN_external_metadata>",
+     "dest_queue": "my-response-queue"
+ }]]></dw:set-payload>
+        </dw:transform-message>
+        <flow-ref name="mhUpdateServiceListenerFlow" doc:name="Flow-ref to mhUpdateServiceListenerFlow"/>
+        <mock:verify-call messageProcessor="http:request" times="1" doc:name="Verify LDAP2MAM Call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="LDAP2MAM"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="http:request" times="1" doc:name="Verify MH Update Call">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="POST"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="http:request" atLeast="1" doc:name="Verify MH GET Call">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="GET"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="amqp:outbound-endpoint" times="1" doc:name="Verify AMQP outbound"/>
+        <mock:verify-call messageProcessor="amqp:acknowledge-message" times="1" doc:name="Verify AMQP ack"/>
+    </munit:test>
+    <munit:test name="end-to-end-test-mhUpdateServiceListenerFlowFail" description="Test a failed update">
+    	<mock:when messageProcessor="mule:sub-flow" doc:name="Mock esPost">
+            <mock:with-attributes>
+                <mock:with-attribute name="name" whereValue="#[matchContains('esPost')]"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+    	<mock:when messageProcessor="http:request" doc:name="Mock LDAP2MAM">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="LDAP2MAM"/>
+            </mock:with-attributes>
+            <mock:then-return payload="{&quot;status&quot;:&quot;success&quot;,&quot;description&quot;:&quot;SuccessfullyfoundorganizationforLDAPid&quot;,&quot;data&quot;:{&quot;or_id&quot;:&quot;OR-rf5kf25&quot;,&quot;cp_name_mam&quot;:&quot;vrt&quot;,&quot;cp_name&quot;:&quot;VRT&quot;,&quot;category&quot;:&quot;ContentPartner&quot;,&quot;sector&quot;:&quot;PubliekeOmroep&quot;,&quot;cp_name_catpro&quot;:&quot;VRT&quot;,&quot;contact_information&quot;:{&quot;phone&quot;:&quot;+3227413111&quot;,&quot;website&quot;:&quot;www.vrt.be&quot;,&quot;email&quot;:&quot;&quot;,&quot;logoUrl&quot;:&quot;https://assets.viaa.be/images/OR-rf5kf25&quot;}}}" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="200"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <mock:throw-an doc:name="Throw an Exception on MediahavenAPI update call" exception-ref="#[new java.lang.Exception()]" whenCalling="http:request">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="POST"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+        </mock:throw-an>
+        <mock:when messageProcessor="http:request" doc:name="Mock MediahavenAPI get call">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="GET"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+            <mock:then-return payload="{&quot;lastModifiedDate&quot;: &quot;#[org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd'T'HH:mm:ss'Z'&quot;).print(new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC).plusSeconds(2))]&quot;}" mimeType="application/json">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="#[200]"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+        </mock:when>
+        <mock:when messageProcessor="amqp:outbound-endpoint" doc:name="Mock AMQP">
+            <mock:then-return payload="#[&quot;&quot;]"/>
+        </mock:when>
+        <mock:when messageProcessor="amqp:acknowledge-message" doc:name="Mock ack-message">
+            <mock:then-return payload="#[]"/>
+        </mock:when>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+     "correlation_id": "abc123",
+     "fragment_id": "9a3cb699a3834160bde85d74fc18b02a60db8cef86c14219b94440fe6c7e82c6126ea398274e44b0be193d76aacec50",
+     "cp_id": "OR-rf5kf25",
+     "data": "<MediaHAVEN_external_metadata><MDProperties><CP_id>OR-ABCDEFG</CP_id></MDProperties></MediaHAVEN_external_metadata>",
+     "dest_queue": "my-response-queue"
+ }]]></dw:set-payload>
+        </dw:transform-message>
+        <flow-ref name="mhUpdateServiceListenerFlow" doc:name="Flow-ref to mhUpdateServiceListenerFlow"/>
+        <mock:verify-call messageProcessor="http:request" times="1" doc:name="Verify LDAP2MAM Call">
+            <mock:with-attributes>
+                <mock:with-attribute name="config-ref" whereValue="LDAP2MAM"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="http:request" times="1" doc:name="Verify MH Update Call">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="POST"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="http:request"  doc:name="Verify MH GET Call" times="0">
+            <mock:with-attributes>
+                <mock:with-attribute name="method" whereValue="GET"/>
+                <mock:with-attribute name="config-ref" whereValue="MediahavenAPI"/>
+            </mock:with-attributes>
+        </mock:verify-call>
+        <mock:verify-call messageProcessor="amqp:outbound-endpoint" times="1" doc:name="Verify AMQP outbound"/>
+        <mock:verify-call messageProcessor="amqp:acknowledge-message" times="1" doc:name="Verify AMQP ack"/>
+    </munit:test>
+</mule>
