@@ -3,6 +3,7 @@ production.properties
 catalog
 mappings
 src/main/app/mule-app.properties
+src/test/resources
 .DS_Store
 # Java defaults (https://github.com/github/gitignore/blob/master/Java.gitignore) #
 # --- #
