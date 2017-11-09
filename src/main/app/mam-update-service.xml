@@ -103,7 +103,7 @@ payload]]></dw:set-variable>
                 <flow-ref name="requestNewToken" doc:name="requestNewToken"/>
             </when>
             <otherwise>
-                <logger level="INFO" doc:name="Yes - Use the stored token" message="I already have a token for #[flowVars.cp_name]. No need to request a new one."/>
+                <logger level="DEBUG" doc:name="Yes - Use the stored token" message="I already have a token for #[flowVars.cp_name]. No need to request a new one."/>
                 <enricher target="#[sessionVars.access_token]" doc:name="Message Enricher">
                     <objectstore:retrieve config-ref="Tokens_ObjectStore_Connector" key="#[flowVars.basic_credentials]" defaultValue-ref="#[null]" doc:name="ObjectStore"/>
                 </enricher>
@@ -134,7 +134,6 @@ payload.access_token]]></dw:set-session-variable>
         <until-successful maxRetries="50" millisBetweenRetries="1000" synchronous="true" doc:name="Until Successful" failureExpression="#[flowVars.outcome == &quot;RETRY&quot;]">
             <flow-ref name="tryCheckIfUpdatedSubFlow" doc:name="tryCheckIfUpdatedSubFlow"/>
         </until-successful>
-        <logger level="INFO" doc:name="Logger"/>
         <logger message="Successfully updated #[flowVars.fragment_id]" level="INFO" doc:name="Successfully updated fragment_id"/>
     </sub-flow>
     <flow name="tryUpdateMetadataFlow" processingStrategy="synchronous">
@@ -170,7 +169,7 @@ payload.access_token]]></dw:set-session-variable>
         <catch-exception-strategy doc:name="Catch Exception Strategy">
         	<choice doc:name="Is the response code 401?">
                 <when expression="#[message.inboundProperties.'http.status' == 401]">
-                    <logger message="Response code was 401. Request a new token" level="INFO" doc:name="Response code was 401. Request a new token"/>
+                    <logger message="Response code was 401. Request a new token" level="WARN" doc:name="Response code was 401. Request a new token"/>
                     <flow-ref name="requestNewToken" doc:name="requestNewToken"/>
                     <flow-ref name="getTokenFlow" doc:name="getTokenFlow"/>
                     <flow-ref name="performPoll" doc:name="performPoll"/>
@@ -203,6 +202,7 @@ payload.lastModifiedDate]]></dw:set-payload>
         <set-variable variableName="toLimit" value="#[new org.joda.time.LocalDateTime(org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;).parseDateTime(payload.replaceAll(&quot;Z&quot;, &quot;&quot;).replaceAll(&quot;T&quot;, &quot; &quot;)).getMillis()).toDateTime(org.joda.time.DateTimeZone.UTC).plusSeconds(1)]" doc:name="Set toLimit (updated time minus 1 second)"/>
         <set-variable variableName="updateInterval" value="#[new org.joda.time.Interval(flowVars.fromLimit, flowVars.toLimit)]" doc:name="Set updateInterval"/>
         <logger message="Date updated: #[payload]" level="INFO" doc:name="Logger"/>
+        <logger message="Date update was requested: #[flowVars.updatedDateTime]" level="INFO" doc:name="Logger"/>
         <choice doc:name="Was the fragment updated at the time Mediahaven responded?">
             <when expression="#[flowVars.updateInterval.contains(flowVars.updatedDateTime)]">
                 <set-variable variableName="outcome" value="OK" doc:name="Set outcome"/>
