@@ -220,7 +220,7 @@ payload.lastModifiedDate]]></dw:set-payload>
 {
 	correlation_id: flowVars.correlation_id when (flowVars.correlation_id != null or flowVars.correlation_id != '') otherwise 'unknown',
 	fragment_id: flowVars.fragment_id when (flowVars.fragment_id != null or flowVars.fragment_id != '') otherwise 'unknown',
-	outcome: flowVars.outcome when flowVars.outcome? otherwise 'failed',
+	outcome: flowVars.outcome when (flowVars.outcome == 'success') otherwise 'failed',
 	message: flowVars.message when flowVars.message? otherwise '',
 	cause: flowVars.cause when flowVars.cause? otherwise ''
 }]]></dw:set-payload>
