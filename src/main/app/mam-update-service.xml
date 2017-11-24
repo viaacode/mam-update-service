@@ -14,6 +14,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
 http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
 http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd">
+    <objectstore:config name="RetryCount_ObjectStore__Connector" partition="RetryCount_partition" entryTtl="60000" maxEntries="9999999" doc:name="ObjectStore: Connector" expirationInterval="10000"/>
     
     <flow name="mhUpdateServiceListenerFlow" initialState="started">
         <amqp:inbound-endpoint
@@ -131,7 +132,7 @@ payload.access_token]]></dw:set-session-variable>
         <flow-ref name="tryUpdateMetadataFlow" doc:name="tryUpdateMetadataFlow"/>
         <set-variable variableName="updateRequestedTime" value="#[new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC)]" doc:name="Set updateRequestedTime"/>
         <set-variable variableName="updatedDateTime" value="#[org.joda.time.format.DateTimeFormat.forPattern('E, d MMM yyyy HH:mm:ss z').parseDateTime(message.inboundProperties.date).withZone(org.joda.time.DateTimeZone.UTC)]" doc:name="Set updatedDateTime"/>
-        <until-successful maxRetries="50" millisBetweenRetries="1000" synchronous="true" doc:name="Until Successful" failureExpression="#[flowVars.outcome == &quot;RETRY&quot;]">
+        <until-successful maxRetries="999999999" millisBetweenRetries="1000" synchronous="true" doc:name="Until Successful" failureExpression="#[flowVars.outcome == &quot;RETRY&quot;]">
             <flow-ref name="tryCheckIfUpdatedSubFlow" doc:name="tryCheckIfUpdatedSubFlow"/>
         </until-successful>
         <logger message="Successfully updated #[flowVars.fragment_id]" level="INFO" doc:name="Successfully updated fragment_id"/>
@@ -164,6 +165,14 @@ payload.access_token]]></dw:set-session-variable>
     </sub-flow>
     <flow name="tryCheckIfUpdatedSubFlow" processingStrategy="synchronous">
         <logger message="Checking if the fragment was updated (#[flowVars.fragment_id])" level="INFO" doc:name="Logger"/>
+        <enricher target="#[sessionVars.retry]" doc:name="Message Enricher - retry count">
+            <objectstore:retrieve config-ref="RetryCount_ObjectStore__Connector" key="#[flowVars.fragment_id]" defaultValue-ref="#[0]" doc:name="ObjectStore"/>
+        </enricher>
+        <logger message="Sleeping #[sessionVars.retry == 0 ? 1.5 : sessionVars.retry*2] seconds" level="INFO" doc:name="Sleep"/>
+        <scripting:component doc:name="Bit of sleep">
+            <scripting:script engine="Groovy"><![CDATA[if (sessionVars.retry == 0) sleep(1500);
+else sleep(sessionVars.retry*2*1000);]]></scripting:script>
+        </scripting:component>
         <flow-ref name="getTokenFlow" doc:name="getTokenFlow"/>
         <flow-ref name="performPoll" doc:name="performPoll"/>
         <catch-exception-strategy doc:name="Catch Exception Strategy">
@@ -209,6 +218,7 @@ payload.lastModifiedDate]]></dw:set-payload>
             </when>
             <otherwise>
                 <set-variable variableName="outcome" value="RETRY" doc:name="Set outcome"/>
+                <objectstore:store config-ref="RetryCount_ObjectStore__Connector" value-ref="#[sessionVars.retry+1]" overwrite="true" key="#[flowVars.fragment_id]" doc:name="Save retry for this fragment ID"/>
             </otherwise>
         </choice>
     </sub-flow>
