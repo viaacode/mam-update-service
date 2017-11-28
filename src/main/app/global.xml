@@ -19,7 +19,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
     <http:request-config name="RabbitMQAPI" host="${rabbit.host}" port="${rabbit.apiport}" basePath="${rabbit.basepath}" doc:name="HTTP Request Configuration">
         <http:basic-authentication username="${rabbit.username}" password="${rabbit.password}" preemptive="true"/>
     </http:request-config>
-    <http:request-config name="MediahavenAPI" protocol="HTTPS" host="${mh.host}" port="${mh.port}" basePath="${mh.basepath}" doc:name="HTTP Request Configuration">
+    <http:request-config name="MediahavenAPI" protocol="HTTPS" host="${mh.host}" port="${mh.port}" basePath="${mh.basepath}" doc:name="HTTP Request Configuration" responseTimeout="50000" connectionIdleTimeout="50000">
     </http:request-config>
     <http:request-config name="ES" host="${es.host}" port="${es.port}" basePath="${es.basepath}" doc:name="HTTP Request Configuration"/>
     <http:request-config name="LDAP2MAM" host="${ldap2mam.host}" port="${ldap2mam.port}" basePath="${ldap2mam.basepath}" doc:name="HTTP Request Configuration">
