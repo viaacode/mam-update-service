@@ -63,15 +63,27 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         <set-variable variableName="fragment_id" value="#[payload.fragment_id]" doc:name="Set fragment_id"/>
         <set-variable variableName="cp_name" value="#[payload.cp_name]" doc:name="Set cp_name"/>
         <set-variable variableName="cp_id" value="#[payload.cp_id]" doc:name="Set cp_id"/>
-        <set-variable variableName="data" value="#[payload.data]" doc:name="Set data"/>
+        <set-variable variableName="data" value="#[payload.data]" doc:name="Set data" mimeType="application/xml"/>
         <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
         <mulexml:dom-to-xml-transformer doc:name="DOM to XML"/>
-        <dw:transform-message doc:name="Set javaData">
+        <dw:transform-message doc:name="Set javaData and remove fragments from data">
             <dw:input-payload doc:sample="sample_data/empty.xml" mimeType="application/java"/>
             <dw:set-variable variableName="javaData"><![CDATA[%dw 1.0
 %output application/java
 ---
 payload]]></dw:set-variable>
+            <dw:set-variable variableName="data"><![CDATA[%dw 1.0
+%output application/xml skipNullOn="everywhere"
+---
+{ "MediaHAVEN_external_metadata": {
+(flowVars.data.MediaHAVEN_external_metadata mapObject using (key = $$) (
+	'$$': $ when '$$' != 'fragments' and '$$' != 'MDProperties' otherwise null
+)),
+"MDProperties":
+(flowVars.data.MediaHAVEN_external_metadata.MDProperties mapObject (
+	'$$': $
+))}
+}]]></dw:set-variable>
         </dw:transform-message>
         <choice doc:name="Choice">
             <when expression="#[flowVars.cp_id != null &amp;&amp; !flowVars.cp_id.isEmpty()]">
@@ -129,8 +141,8 @@ payload.access_token]]></dw:set-session-variable>
     </sub-flow>
     <sub-flow name="updateAndPollFlow">
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload empty"/>
-        <flow-ref name="tryUpdateMetadataFlow" doc:name="tryUpdateMetadataFlow"/>
         <set-variable variableName="updateRequestedTime" value="#[new org.joda.time.DateTime().withZone(org.joda.time.DateTimeZone.UTC)]" doc:name="Set updateRequestedTime"/>
+        <flow-ref name="tryUpdateMetadataFlow" doc:name="tryUpdateMetadataFlow"/>
         <set-variable variableName="updatedDateTime" value="#[org.joda.time.format.DateTimeFormat.forPattern('E, d MMM yyyy HH:mm:ss z').parseDateTime(message.inboundProperties.date).withZone(org.joda.time.DateTimeZone.UTC)]" doc:name="Set updatedDateTime"/>
         <until-successful maxRetries="999999999" millisBetweenRetries="1000" synchronous="true" doc:name="Until Successful" failureExpression="#[flowVars.outcome == &quot;RETRY&quot;]">
             <flow-ref name="tryCheckIfUpdatedSubFlow" doc:name="tryCheckIfUpdatedSubFlow"/>
@@ -156,22 +168,26 @@ payload.access_token]]></dw:set-session-variable>
     <sub-flow name="performUpdate">
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload to empty"/>
         <set-attachment attachmentName="metadata" value="#[flowVars.data]" contentType="application/xml" doc:name="Attachment"/>
-        <http:request config-ref="MediahavenAPI" path="/media/#[flowVars.fragment_id]" method="POST" doc:name="Update metadata">
-            <http:request-builder>
-                <http:header headerName="Authorization" value="#['Bearer ' + sessionVars.access_token]"/>
-            </http:request-builder>
-            <http:success-status-code-validator values="204,403"/>
-        </http:request>
+        <logger message="Sending update for #[flowVars.fragment_id]" level="INFO" doc:name="Sending update"/>
+        <until-successful maxRetries="5" failureExpression="#[message.inboundProperties.'http.status' == 500]" synchronous="true" doc:name="Failure when 500 return code">
+            <http:request config-ref="MediahavenAPI" path="/media/#[flowVars.fragment_id]" method="POST" doc:name="Update metadata">
+                <http:request-builder>
+                    <http:header headerName="Authorization" value="#['Bearer ' + sessionVars.access_token]"/>
+                </http:request-builder>
+                <http:success-status-code-validator values="204,403"/>
+            </http:request>
+        </until-successful>
     </sub-flow>
     <flow name="tryCheckIfUpdatedSubFlow" processingStrategy="synchronous">
         <logger message="Checking if the fragment was updated (#[flowVars.fragment_id])" level="INFO" doc:name="Logger"/>
         <enricher target="#[sessionVars.retry]" doc:name="Message Enricher - retry count">
             <objectstore:retrieve config-ref="RetryCount_ObjectStore__Connector" key="#[flowVars.fragment_id]" defaultValue-ref="#[0]" doc:name="ObjectStore"/>
         </enricher>
-        <logger message="Sleeping #[sessionVars.retry == 0 ? 1.5 : sessionVars.retry*2] seconds" level="INFO" doc:name="Sleep"/>
+        <logger message="Sleeping #[sessionVars.retry == 0 ? 1.5 : sessionVars.retry*2 &lt; 30 ? sessionVars.retry*2 : 30] seconds" level="INFO" doc:name="Sleep"/>
         <scripting:component doc:name="Bit of sleep">
             <scripting:script engine="Groovy"><![CDATA[if (sessionVars.retry == 0) sleep(1500);
-else sleep(sessionVars.retry*2*1000);]]></scripting:script>
+if (sessionVars.retry < 15) sleep(sessionVars.retry*2*1000);
+else sleep(30000);]]></scripting:script>
         </scripting:component>
         <flow-ref name="getTokenFlow" doc:name="getTokenFlow"/>
         <flow-ref name="performPoll" doc:name="performPoll"/>
@@ -207,13 +223,11 @@ else sleep(sessionVars.retry*2*1000);]]></scripting:script>
 ---
 payload.lastModifiedDate]]></dw:set-payload>
         </dw:transform-message>
-        <set-variable variableName="fromLimit" value="#[new org.joda.time.LocalDateTime(org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;).parseDateTime(payload.replaceAll(&quot;Z&quot;, &quot;&quot;).replaceAll(&quot;T&quot;, &quot; &quot;)).getMillis()).toDateTime(org.joda.time.DateTimeZone.UTC).minusSeconds(1)]" doc:name="Set fromLimit (updated time minus 1 second)"/>
-        <set-variable variableName="toLimit" value="#[new org.joda.time.LocalDateTime(org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;).parseDateTime(payload.replaceAll(&quot;Z&quot;, &quot;&quot;).replaceAll(&quot;T&quot;, &quot; &quot;)).getMillis()).toDateTime(org.joda.time.DateTimeZone.UTC).plusSeconds(1)]" doc:name="Set toLimit (updated time minus 1 second)"/>
-        <set-variable variableName="updateInterval" value="#[new org.joda.time.Interval(flowVars.fromLimit, flowVars.toLimit)]" doc:name="Set updateInterval"/>
-        <logger message="Date updated: #[payload]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="lastModifiedDate" value="#[new org.joda.time.LocalDateTime(org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;).parseDateTime(payload.replaceAll(&quot;Z&quot;, &quot;&quot;).replaceAll(&quot;T&quot;, &quot; &quot;)).getMillis()).toDateTime(org.joda.time.DateTimeZone.UTC)]" doc:name="Set lastModifiedDate"/>
+        <logger message="Date updated: #[flowVars.lastModifiedDate]" level="INFO" doc:name="Logger"/>
         <logger message="Date update was requested: #[flowVars.updatedDateTime]" level="INFO" doc:name="Logger"/>
-        <choice doc:name="Was the fragment updated at the time Mediahaven responded?">
-            <when expression="#[flowVars.updateInterval.contains(flowVars.updatedDateTime)]">
+        <choice doc:name="Is the last modified date after the date request?">
+            <when expression="#[flowVars.lastModifiedDate &gt;= flowVars.updateRequestedTime.secondOfDay().roundFloorCopy()]">
                 <set-variable variableName="outcome" value="OK" doc:name="Set outcome"/>
             </when>
             <otherwise>
