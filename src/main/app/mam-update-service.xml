@@ -151,6 +151,17 @@ payload.access_token]]></dw:set-session-variable>
     </sub-flow>
     <flow name="tryUpdateMetadataFlow" processingStrategy="synchronous">
         <flow-ref name="performUpdate" doc:name="performUpdate"/>
+        <choice doc:name="When 403 try again with cp_name viaa">
+            <when expression="#[message.inboundProperties.'http.status' == 403]">
+                <set-variable variableName="cp_name" value="#[&quot;viaa&quot;]" doc:name="Set cp_name to viaa"/>
+                <set-variable variableName="basic_credentials" value="#[&quot;viaa@&quot; + flowVars.cp_name + ':' + '${mh.password}']" doc:name="Set basic_credentials"/>
+                <flow-ref name="requestNewToken" doc:name="requestNewToken"/>
+                <flow-ref name="performUpdate" doc:name="performUpdate"/>
+            </when>
+            <otherwise>
+                <expression-component doc:name="do nothing"><![CDATA[// do nothing]]></expression-component>
+            </otherwise>
+        </choice>
         <catch-exception-strategy doc:name="Catch Exception Strategy">
             <choice doc:name="Is the response code 401?">
                 <when expression="#[message.inboundProperties.'http.status' == 401]">
