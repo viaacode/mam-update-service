@@ -63,28 +63,25 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         <set-variable variableName="fragment_id" value="#[payload.fragment_id]" doc:name="Set fragment_id"/>
         <set-variable variableName="cp_name" value="#[payload.cp_name]" doc:name="Set cp_name"/>
         <set-variable variableName="cp_id" value="#[payload.cp_id]" doc:name="Set cp_id"/>
-        <set-variable variableName="data" value="#[payload.data]" doc:name="Set data" mimeType="application/xml"/>
-        <set-payload value="#[flowVars.data]" doc:name="Set Payload"/>
+        <set-payload value="#[payload.data]" doc:name="Set Payload"/>
         <mulexml:dom-to-xml-transformer doc:name="DOM to XML"/>
-        <dw:transform-message doc:name="Set javaData and remove fragments from data">
-            <dw:input-payload doc:sample="sample_data/empty.xml" mimeType="application/java"/>
-            <dw:set-variable variableName="javaData"><![CDATA[%dw 1.0
-%output application/java
----
-payload]]></dw:set-variable>
-            <dw:set-variable variableName="data"><![CDATA[%dw 1.0
-%output application/xml skipNullOn="everywhere"
----
-{ "MediaHAVEN_external_metadata": {
-(flowVars.data.MediaHAVEN_external_metadata mapObject using (key = $$) (
-	'$$': $ when '$$' != 'fragments' and '$$' != 'MDProperties' otherwise null
-)),
-"MDProperties":
-(flowVars.data.MediaHAVEN_external_metadata.MDProperties mapObject (
-	'$$': $
-))}
-}]]></dw:set-variable>
-        </dw:transform-message>
+            <dw:transform-message doc:name="Set javaData and remove fragments from data">
+            <dw:input-payload doc:sample="sample_data/empty_2.xml"/>
+        
+        <dw:set-variable variableName="data"><![CDATA[%dw 1.0
+ %output application/xml skipNullOn="everywhere"
+ ---
+ { "MediaHAVEN_external_metadata": {
+ (payload.MediaHAVEN_external_metadata mapObject using (key = $$) (
+ 	'$$' @((payload.MediaHAVEN_external_metadata.'$$'.@ default {} mapObject { '$$': $ })): $ when '$$' != 'fragments' and '$$' != 'MDProperties' otherwise null
+ )),
+ "MDProperties":
+ (payload.MediaHAVEN_external_metadata.MDProperties mapObject (
+ 	'$$' @((payload.MediaHAVEN_external_metadata.MDProperties.'$$'.@ default {} mapObject { '$$': $ })): $
+ ))}
+ }]]></dw:set-variable>
+         </dw:transform-message>
+ 
         <choice doc:name="Choice">
             <when expression="#[flowVars.cp_id != null &amp;&amp; !flowVars.cp_id.isEmpty()]">
                 <logger message="CP id was filled in. Request cp_name" level="INFO" doc:name="CP id was filled in. Request cp_name"/>
@@ -236,7 +233,7 @@ payload.lastModifiedDate]]></dw:set-payload>
         </dw:transform-message>
         <set-variable variableName="lastModifiedDate" value="#[new org.joda.time.LocalDateTime(org.joda.time.format.DateTimeFormat.forPattern(&quot;yyyy-MM-dd HH:mm:ss&quot;).parseDateTime(payload.replaceAll(&quot;Z&quot;, &quot;&quot;).replaceAll(&quot;T&quot;, &quot; &quot;)).getMillis()).toDateTime(org.joda.time.DateTimeZone.UTC)]" doc:name="Set lastModifiedDate"/>
         <logger message="Date updated: #[flowVars.lastModifiedDate]" level="INFO" doc:name="Logger"/>
-        <logger message="Date update was requested: #[flowVars.updatedDateTime]" level="INFO" doc:name="Logger"/>
+        <logger message="Date update was requested: #[flowVars.updateRequestedTime.secondOfDay().roundFloorCopy()]" level="INFO" doc:name="Logger"/>
         <choice doc:name="Is the last modified date after the date request?">
             <when expression="#[flowVars.lastModifiedDate &gt;= flowVars.updateRequestedTime.secondOfDay().roundFloorCopy()]">
                 <set-variable variableName="outcome" value="OK" doc:name="Set outcome"/>
