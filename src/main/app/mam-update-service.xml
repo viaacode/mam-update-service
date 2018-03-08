@@ -287,6 +287,6 @@ payload.lastModifiedDate]]></dw:set-payload>
 }]]></dw:set-payload>
         </dw:transform-message>
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
-        <http:request config-ref="ES" path="/${es.index}/debug" method="POST" doc:name="POST to ES"/>
+        <http:request config-ref="ES" path="/${es.index}-#[server.dateTime.format('yyyy.MM')]/debug" method="POST" doc:name="POST to ES"/>
     </sub-flow>
 </mule>
