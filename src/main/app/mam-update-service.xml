@@ -22,7 +22,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         	queueDurable="true"
         	responseTimeout="10000"
         	connector-ref="InboundAMQPConnector"
-        	doc:name="AMQP-0-9" numberOfChannels="5"/>
+        	doc:name="AMQP-0-9" numberOfChannels="10"/>
         <flow-ref name="parseMessageSubFlow" doc:name="parseMessageSubFlow"/>
         <flow-ref name="getTokenFlow" doc:name="getTokenFlow"/>
         <flow-ref name="updateAndPollFlow" doc:name="updateAndPollFlow"/>
@@ -120,6 +120,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         </choice>
     </sub-flow>
     <sub-flow name="requestNewToken">
+        <logger message="Token didn't work. Requesting a new one!" level="WARN" doc:name="Logger"/>
         <set-payload value="#[null]" doc:name="Set Payload empty"/>
         <set-attachment attachmentName="grant_type" value="password" contentType="text/plain" doc:name="Set grant_type"/>
         <http:request config-ref="MediahavenAPI" path="/oauth/access_token" method="POST" doc:name="Request a token">
@@ -176,7 +177,7 @@ payload.access_token]]></dw:set-session-variable>
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload to empty"/>
         <set-attachment attachmentName="metadata" value="#[flowVars.data]" contentType="application/xml" doc:name="Attachment"/>
         <logger message="Sending update for #[flowVars.fragment_id]" level="INFO" doc:name="Sending update"/>
-        <until-successful maxRetries="5" failureExpression="#[message.inboundProperties.'http.status' == 500]" synchronous="true" doc:name="Failure when 500 return code">
+        <until-successful maxRetries="5" failureExpression="#[message.inboundProperties.'http.status' == 500 || message.inboundProperties.'http.status' == 401]" synchronous="true" doc:name="Failure when 500 return code">
             <http:request config-ref="MediahavenAPI" path="/media/#[flowVars.fragment_id]" method="POST" doc:name="Update metadata">
                 <http:request-builder>
                     <http:header headerName="Authorization" value="#['Bearer ' + sessionVars.access_token]"/>
