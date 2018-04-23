@@ -57,11 +57,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         <set-variable variableName="type" value="request" doc:name="Set type"/>
         <flow-ref name="esPost" doc:name="esPost"/>
         <set-payload value="#[flowVars.originalMessage]" doc:name="Set Payload to originalMessage"/>
-        <set-variable variableName="dest_queue" value="#[payload.dest_queue]" doc:name="Set dest_queue"/>
-        <set-variable variableName="correlation_id" value="#[payload.correlation_id]" doc:name="Set correlation_id"/>
-        <set-variable variableName="fragment_id" value="#[payload.fragment_id]" doc:name="Set fragment_id"/>
-        <set-variable variableName="cp_name" value="#[payload.cp_name]" doc:name="Set cp_name"/>
-        <set-variable variableName="cp_id" value="#[payload.cp_id]" doc:name="Set cp_id"/>
+        <flow-ref name="setVars" doc:name="FlowRef: setVars"/>
         <set-payload value="#[payload.data]" doc:name="Set Payload"/>
         <mulexml:dom-to-xml-transformer doc:name="DOM to XML" mimeType="application/xml"/>
             <dw:transform-message doc:name="Set javaData and remove fragments from data">
@@ -104,6 +100,13 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
                 <expression-filter expression="#[flowVars.cp_name != null &amp;&amp; !flowVars.cp_name.isEmpty()]"/>
             </and-filter>
         </message-filter>
+    </sub-flow>
+    <sub-flow name="setVars">
+        <set-variable variableName="dest_queue" value="#[payload.dest_queue]" doc:name="Set fVar: dest_queue"/>
+        <set-variable variableName="correlation_id" value="#[payload.correlation_id]" doc:name="Set fVar: correlation_id"/>
+        <set-variable variableName="fragment_id" value="#[payload.fragment_id]" doc:name="Set fVar: fragment_id"/>
+        <set-variable variableName="cp_name" value="#[payload.cp_name]" doc:name="Set fVar: cp_name"/>
+        <set-variable variableName="cp_id" value="#[payload.cp_id]" doc:name="Set fVar: cp_id"/>
     </sub-flow>
     <sub-flow name="getTokenFlow">
         <objectstore:contains config-ref="Tokens_ObjectStore_Connector" key="#[flowVars.basic_credentials]" doc:name="Check if the objectstore contains this basic_credentials combo"/>
