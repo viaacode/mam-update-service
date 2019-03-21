@@ -22,7 +22,8 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
             queueDurable="true"
             responseTimeout="10000"
             connector-ref="InboundAMQPConnector"
-            doc:name="AMQP-0-9" numberOfChannels="10"/>
+            doc:name="AMQP-0-9" numberOfChannels="3"/>
+        <logger level="DEBUG" doc:name="Log payload"/>
         <flow-ref name="parseMessageSubFlow" doc:name="parseMessageSubFlow"/>
         <flow-ref name="getTokenFlow" doc:name="getTokenFlow"/>
         <flow-ref name="updateAndPollFlow" doc:name="updateAndPollFlow"/>
