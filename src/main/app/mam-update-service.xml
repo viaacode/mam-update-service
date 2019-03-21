@@ -18,11 +18,11 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
     
     <flow name="mhUpdateServiceListenerFlow" initialState="started">
         <amqp:inbound-endpoint
-        	queueName="${rabbit.requestqueue}"
-        	queueDurable="true"
-        	responseTimeout="10000"
-        	connector-ref="InboundAMQPConnector"
-        	doc:name="AMQP-0-9" numberOfChannels="10"/>
+            queueName="${rabbit.requestqueue}"
+            queueDurable="true"
+            responseTimeout="10000"
+            connector-ref="InboundAMQPConnector"
+            doc:name="AMQP-0-9" numberOfChannels="10"/>
         <flow-ref name="parseMessageSubFlow" doc:name="parseMessageSubFlow"/>
         <flow-ref name="getTokenFlow" doc:name="getTokenFlow"/>
         <flow-ref name="updateAndPollFlow" doc:name="updateAndPollFlow"/>
@@ -53,8 +53,8 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
     </flow>
     <sub-flow name="parseMessageSubFlow">
         <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
-        <set-variable variableName="originalMessage" value="#[payload]" doc:name="Set originalMessage"/>
-        <set-variable variableName="type" value="request" doc:name="Set type"/>
+        <set-variable variableName="originalMessage" value="#[payload]" doc:name="Set fVar: originalMessage"/>
+        <set-variable variableName="type" value="request" doc:name="Set fVar: type"/>
         <flow-ref name="esPost" doc:name="esPost"/>
         <set-payload value="#[flowVars.originalMessage]" doc:name="Set Payload to originalMessage"/>
         <flow-ref name="setVars" doc:name="FlowRef: setVars"/>
@@ -79,7 +79,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
  
         <choice doc:name="Choice">
             <when expression="#[flowVars.cp_id != null &amp;&amp; !flowVars.cp_id.isEmpty()]">
-                <logger message="CP id was filled in. Request cp_name" level="INFO" doc:name="CP id was filled in. Request cp_name"/>
+                <logger message="CP id was filled in: #[flowVars.cp_id]. Request cp_name. (frag.id=#[flowVars.fragment_id])" level="INFO" doc:name="Log: CP_id was filled in. Request cp_name"/>
                 <http:request config-ref="LDAP2MAM" path="/org/{ldap_id}" method="GET" doc:name="HTTP">
                     <http:request-builder>
                         <http:uri-param paramName="ldap_id" value="#[flowVars.cp_id]"/>
@@ -87,6 +87,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
                 </http:request>
                 <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
                 <set-variable variableName="cp_name" value="#[payload.data.cp_name_mam]" doc:name="Set cp_name"/>
+                <logger message="Got cp_name_mam: &quot;#[flowVars.cp_name]&quot;" level="INFO" doc:name="Log: Got cp_name_mam x"/>
             </when>
             <otherwise>
                 <expression-component doc:name="Do nothing"><![CDATA[// Do nothing]]></expression-component>
@@ -123,7 +124,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         </choice>
     </sub-flow>
     <sub-flow name="requestNewToken">
-        <logger message="Token didn't work. Requesting a new one!" level="WARN" doc:name="Logger"/>
+        <logger message="Invalid token, requesting new token for &quot;#[flowVars.cp_name]&quot; (frag.id=#[flowVars.fragment_id])" level="WARN" doc:name="Log: Invalid token, requesting new token for x"/>
         <set-payload value="#[null]" doc:name="Set Payload empty"/>
         <set-attachment attachmentName="grant_type" value="password" contentType="text/plain" doc:name="Set grant_type"/>
         <http:request config-ref="MediahavenAPI" path="/oauth/access_token" method="POST" doc:name="Request a token">
@@ -169,7 +170,7 @@ payload.access_token]]></dw:set-session-variable>
                     <flow-ref name="performUpdate" doc:name="performUpdate"/>
                 </when>
                 <otherwise>
-            	    <scripting:transformer doc:name="Script">
+                    <scripting:transformer doc:name="Script: throw Exception">
                         <scripting:script engine="Groovy"><![CDATA[throw new java.lang.Exception("Response code " + message.getInboundProperty('http.status') + " mapped as failure. Message payload is of type: BufferInputStream");]]></scripting:script>
                     </scripting:transformer>
                 </otherwise>
@@ -179,7 +180,7 @@ payload.access_token]]></dw:set-session-variable>
     <sub-flow name="performUpdate">
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload to empty"/>
         <set-attachment attachmentName="metadata" value="#[flowVars.data]" contentType="application/xml" doc:name="Attachment"/>
-        <logger message="Sending update for #[flowVars.fragment_id]" level="INFO" doc:name="Sending update"/>
+        <logger message="Sending update for #[flowVars.fragment_id]" level="INFO" doc:name="Log: Sending update for frag-id"/>
         <until-successful maxRetries="5" failureExpression="#[message.inboundProperties.'http.status' == 500 || message.inboundProperties.'http.status' == 401]" synchronous="true" doc:name="Failure when 500 return code">
             <http:request config-ref="MediahavenAPI" path="/media/#[flowVars.fragment_id]" method="POST" doc:name="Update metadata">
                 <http:request-builder>
