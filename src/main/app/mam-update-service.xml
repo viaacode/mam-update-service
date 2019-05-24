@@ -69,7 +69,10 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
  ---
  { "MediaHAVEN_external_metadata": {
  (payload.MediaHAVEN_external_metadata mapObject using (key = $$) (
- 	'$$' @((payload.MediaHAVEN_external_metadata.'$$'.@ default {} mapObject { '$$': $ })): $ when '$$' != 'fragments' and '$$' != 'MDProperties' otherwise null
+ 	('$$' @((payload.MediaHAVEN_external_metadata.'$$'.@ default {} mapObject { '$$': $ })): $)
+ 		when '$$' != 'fragments' and
+ 		'$$' != 'MDProperties' and
+ 		('$$' == 'title' and $ != null and $ != '')
  )),
  "MDProperties":
  (payload.MediaHAVEN_external_metadata.MDProperties mapObject (
